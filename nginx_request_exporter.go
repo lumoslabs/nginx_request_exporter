@@ -174,21 +174,15 @@ func main() {
 			}
 
 			// Lumos magic: get device_type from http user agent
-			device_type, err := parseRule(labels.Get("user_agent"), cfg.DeviceType.Default, cfg.DeviceType.Rules)
-			if err != nil {
-				log.Error(err)
-				continue
-			} else {
+			if user_agent, ok := labels.Get("user_agent"); ok {
+				device_type := parseRule(user_agent, cfg.DeviceType.Default, cfg.DeviceType.Rules)
 				labels.Set("device_type", device_type)
 			}
 			labels.Delete("user_agent")
 
 			// Lumos magic: get prefix from request uri
-			prefix, err := parseRule(labels.Get("request_uri"), cfg.Prefix.Default, cfg.Prefix.Rules)
-			if err != nil {
-				log.Error(err)
-				continue
-			} else {
+			if request_uri, ok := labels.Get("request_uri"); ok {
+				prefix := parseRule(request_uri, cfg.Prefix.Default, cfg.Prefix.Rules)
 				labels.Set("prefix", prefix)
 			}
 			labels.Delete("request_uri")

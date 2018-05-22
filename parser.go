@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 	"text/scanner"
+
+	"github.com/prometheus/common/log"
 )
 
 type metric struct {
@@ -137,6 +139,8 @@ func parseRule(src, defaultValue string, rules RuleList) string {
 	for r := range rules {
 		if ok, er := regexp.MatchString(r.Regex, src); ok {
 			return r.Value
+		} else {
+			log.Error(er)
 		}
 	}
 	return defaultValue

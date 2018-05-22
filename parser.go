@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/scanner"
@@ -59,7 +60,6 @@ func (l *labelset) Set(key, val string) {
 	l.Names = append(l.Names, key)
 	l.Values = append(l.Values, val)
 }
-
 
 func (l *labelset) Delete(key string) {
 	for i, k := range l.Names {
@@ -133,12 +133,11 @@ func parseMessage(src string) (metrics []metric, labels *labelset, err error) {
 	return
 }
 
-
-
-func parseDeviceType(src String) (device_type string, err error) {
-
-}
-
-func parsePrefix(src String) (prefix string, err error) {
-
+func parseRule(src, defaultValue String, rules RuleList) string {
+	for r := range rules {
+		if ok, er := regexp.MatchString(r.Regex, src); ok {
+			return r.Value
+		}
+	}
+	return defaultValue
 }

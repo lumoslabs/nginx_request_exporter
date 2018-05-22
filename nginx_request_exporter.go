@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -173,7 +174,7 @@ func main() {
 			}
 
 			// Lumos magic: get device_type from http user agent
-			device_type, err := parseDeviceType(labels.Get("user_agent"))
+			device_type, err := parseRule(labels.Get("user_agent"), cfg.DeviceType.Default, cfg.DeviceType.Rules)
 			if err != nil {
 				log.Error(err)
 				continue
@@ -183,7 +184,7 @@ func main() {
 			labels.Delete("user_agent")
 
 			// Lumos magic: get prefix from request uri
-			prefix, err := parsePrefix(labels.Get("request_uri"))
+			prefix, err := parsePrefix(labels.Get("request_uri"), cfg.Prefix.Default, cfg.Prefix.Rules)
 			if err != nil {
 				log.Error(err)
 				continue

@@ -184,7 +184,7 @@ func main() {
 			labels.Delete("user_agent")
 
 			// Lumos magic: get prefix from request uri
-			prefix, err := parsePrefix(labels.Get("request_uri"), cfg.Prefix.Default, cfg.Prefix.Rules)
+			prefix, err := parseRule(labels.Get("request_uri"), cfg.Prefix.Default, cfg.Prefix.Rules)
 			if err != nil {
 				log.Error(err)
 				continue

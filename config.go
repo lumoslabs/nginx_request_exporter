@@ -8,11 +8,13 @@ import (
 	"github.com/imdario/mergo"
 )
 
+var cfg *Config
+
 type Config struct {
 	ListenAddress string                  `json:"listen_address,omitempty"`
 	TelemetryPath string                  `json:"telemetry_path,omitempty"`
 	SyslogAddress string                  `json:"syslog_address,omitempty"`
-	Buckets       string                  `json:"buckets,omitempty"`
+	Buckets       []float64               `json:"buckets,omitempty"`
 	DeviceType    *LabelConfig            `json:"device_type"`
 	Prefix        *LabelConfig            `json:"prefix"`
 	Histograms    []*HistogramLabelConfig `json:"histograms"`
@@ -23,9 +25,11 @@ type HistogramLabelConfig struct {
 }
 
 type LabelConfig struct {
-	Default string  `json:"default,omitempty"`
-	Rules   []*Rule `json:"rules,omitempty"`
+	Default string    `json:"default,omitempty"`
+	Rules   *RuleList `json:"rules,omitempty"`
 }
+
+type RuleList []Rule
 
 type Rule struct {
 	Value string `json:"value"`

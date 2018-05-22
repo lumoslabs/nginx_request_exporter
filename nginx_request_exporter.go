@@ -15,48 +15,91 @@
 package main
 
 import (
-	"flag"
+	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
-	"strconv"
 
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
+	"github.com/labstack/gommon/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
 
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/mcuadros/go-syslog.v2"
 )
 
 const (
 	namespace = "nginx_request"
+
+	defaultListenAddr       = ":9147"
+	defaultTelemetryPath    = "/metrics"
+	defaultSyslogAddr       = "127.0.0.1:9514"
+	defaultHistogramBuckets = ".005,.01,.025,.05,.1,.25,.5,1,2.5,5,10"
 )
 
-func main() {
-	var (
-		listenAddress = flag.String("web.listen-address", ":9147", "Address to listen on for web interface and telemetry.")
-		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-		syslogAddress = flag.String("nginx.syslog-address", "127.0.0.1:9514", "Syslog listen address/socket for Nginx.")
-		metricBuckets = flag.String("histogram.buckets", ".005,.01,.025,.05,.1,.25,.5,1,2.5,5,10", "Buckets for the Prometheus histogram.")
-	)
-	flag.Parse()
+var (
+	confPath      = kingpin.Flag("config", "Path to config file.").Short('C').Envar("NGX_REQUEST_EXPORTER_CONFIG_PATH").Required().ExistingFile()
+	listen        = kingpin.Flag("listen-address", "Address to listen on for scrapes.").Short('l').Default(defaultListenAddr).Envar("NGX_REQUEST_EXPORTER_LISTEN_ADDRESS").String()
+	telmPath      = kingpin.Flag("telemetry-path", "Path for exposing metrics.").Short('p').Default(defaultTelemetryPath).Envar("NGX_REQUEST_EXPORTER_TELEMETRY_PATH").String()
+	syslogAddress = kingpin.Flag("syslog-address", "Address for syslog.").Default(defaultSyslogAddr).Envar("NGZ_REQUEST_EXPORTER_SYSLOG_ADDRESS").String()
+	metricBuckets = kingpin.Flag("buckets", "Buckets for histogram.").Default(defaultHistogramBuckets).Envar("NGX_REQUEST_EXPORTER_BUCKETS").Float64List()
+	grace         = kingpin.Flag("graceful-timeout", "Timeout for graceful shutdown.").Default("10s").Envar("NGX_REQUEST_EXPORTER_GRACEFUL_TIMEOUT").Duration()
+	v             = kingpin.Flag("v", "Log level. 0 = off, 1 = error, 2 = warn, 3 = info, 4 = debug").Short('v').Default("0").Envar("NGX_REQUEST_EXPORTER_LOG_LEVEL").Int()
+)
 
-	// Parse the buckets
-	var floatBuckets []float64
-	for _, str := range strings.Split(*metricBuckets, ",") {
-		bucket, err := strconv.ParseFloat(strings.TrimSpace(str), 64)
-		if err != nil {
-			log.Fatal(err)
-		}
-		floatBuckets = append(floatBuckets, bucket)
+func logLevel() (l log.Lvl) {
+	switch *v {
+	default:
+		l = log.DEBUG
+	case 0:
+		l = log.OFF
+	case 1:
+		l = log.ERROR
+	case 2:
+		l = log.WARN
+	case 3:
+		l = log.INFO
 	}
+	return
+}
+
+func main() {
+	kingpin.Parse()
+	var er error
+	cfg, er = Configure(*confPath, &Config{
+		ListenAddress: *listen,
+		TelemetryPath: *telmPath,
+		SyslogAddress: *syslogAddress,
+		Buckets:       *metricBuckets,
+		DeviceType: &LabelConfig{
+			Default: "",
+		},
+		Prefix: &LabelConfig{
+			Default: "",
+		},
+	})
+	if er != nil {
+		panic(er)
+	}
+
+	e := echo.New()
+	e.HideBanner = true
+	e.Logger.SetLevel(logLevel())
+
+	e.Pre(middleware.RemoveTrailingSlash())
+	e.Use(middleware.Recover())
+	e.Use(middleware.Gzip())
+
+	// Setup HTTP server
+	e.GET(cfg.TelemetryPath, echo.WrapHandler(promhttp.Handler()))
 
 	// Listen to signals
 	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, syscall.SIGTERM, syscall.SIGINT)
+	signal.Notify(sigchan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
 	// Set up syslog server
 	channel := make(syslog.LogPartsChannel, 20000)
@@ -66,17 +109,17 @@ func main() {
 	server.SetHandler(handler)
 
 	var err error
-	if strings.HasPrefix(*syslogAddress, "unix:") {
-		err = server.ListenUnixgram(strings.TrimPrefix(*syslogAddress, "unix:"))
+	if strings.HasPrefix(cfg.SyslogAddress, "unix:") {
+		err = server.ListenUnixgram(strings.TrimPrefix(cfg.SyslogAddress, "unix:"))
 	} else {
-		err = server.ListenUDP(*syslogAddress)
+		err = server.ListenUDP(cfg.SyslogAddress)
 	}
 	if err != nil {
 		log.Fatal(err)
 	}
 	err = server.Boot()
 	if err != nil {
-		log.Fatal(err)
+		e.Logger.Fatal(err)
 	}
 
 	// Setup metrics
@@ -96,7 +139,7 @@ func main() {
 	})
 	err = prometheus.Register(syslogParseFailures)
 	if err != nil {
-		log.Fatal(err)
+		e.Logger.Fatal(err)
 	}
 	var msgs int64
 	go func() {
@@ -105,27 +148,27 @@ func main() {
 			msgs++
 			tag, _ := part["tag"].(string)
 			if tag != "nginx" {
-				log.Warn("Ignoring syslog message with wrong tag")
+				e.Logger.Warn("Ignoring syslog message with wrong tag")
 				syslogParseFailures.Inc()
 				continue
 			}
 			server, _ := part["hostname"].(string)
 			if server == "" {
-				log.Warn("Hostname missing in syslog message")
+				e.Logger.Warn("Hostname missing in syslog message")
 				syslogParseFailures.Inc()
 				continue
 			}
 
 			content, _ := part["content"].(string)
 			if content == "" {
-				log.Warn("Ignoring empty syslog message")
+				e.Logger.Warn("Ignoring empty syslog message")
 				syslogParseFailures.Inc()
 				continue
 			}
 
 			metrics, labels, err := parseMessage(content)
 			if err != nil {
-				log.Error(err)
+				e.Logger.Error(err)
 				continue
 			}
 			for _, metric := range metrics {
@@ -134,7 +177,7 @@ func main() {
 					Namespace: namespace,
 					Name:      metric.Name,
 					Help:      fmt.Sprintf("Nginx request log value for %s", metric.Name),
-					Buckets:   floatBuckets,
+					Buckets:   cfg.Buckets,
 				}, labels.Names)
 				if err := prometheus.Register(collector); err != nil {
 					if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
@@ -149,29 +192,21 @@ func main() {
 		}
 	}()
 
-	// Setup HTTP server
-	http.Handle(*metricsPath, promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-             <head><title>Nginx Request Exporter</title></head>
-             <body>
-             <h1>Nginx Request Exporter</h1>
-             <p><a href='` + *metricsPath + `'>Metrics</a></p>
-             </body>
-             </html>`))
-	})
-
 	go func() {
-		log.Infof("Starting Server: %s", *listenAddress)
-		log.Fatal(http.ListenAndServe(*listenAddress, nil))
+		e.Logger.Infof("Starting nginx_request_exporter version=%v address=%v", version(), cfg.ListenAddress)
+		if er := e.Start(cfg.ListenAddress); err != nil {
+			e.Logger.Error(er)
+		}
 	}()
 
-	s := <-sigchan
-	log.Infof("Received %v, terminating", s)
-	log.Infof("Messages received: %d", msgs)
-	err = server.Kill()
-	if err != nil {
-		log.Error(err)
+	<-sigchan
+	e.Logger.Info("Shutting down the server...")
+	if er := server.Kill(); er != nil {
+		e.Logger.Error(er)
 	}
-	os.Exit(0)
+	ctx, cancel := context.WithTimeout(context.Background(), *grace)
+	defer cancel()
+	if er := e.Shutdown(ctx); er != nil {
+		e.Logger.Fatal(er)
+	}
 }

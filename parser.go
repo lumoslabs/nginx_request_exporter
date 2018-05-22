@@ -43,6 +43,33 @@ func (l *labelset) Equals(labels []string) bool {
 	return true
 }
 
+func (l *labelset) Get(key string) (string, bool) {
+	for i, k := range l.Names {
+		if k == key {
+			return l.Values[i], true
+		}
+	}
+	return "", false
+}
+
+func (l *labelset) Set(key, val string) {
+	if _, exists := l.Get(key); exists {
+		l.Delete(key)
+	}
+	l.Names = append(l.Names, key)
+	l.Values = append(l.Values, val)
+}
+
+
+func (l *labelset) Delete(key string) {
+	for i, k := range l.Names {
+		if k == key {
+			l.Names = append(l.Names[:i], l.Names[i+1:]...)
+			l.Values = append(l.Values[:i], l.Values[i+1:]...)
+		}
+	}
+}
+
 func parseMessage(src string) (metrics []metric, labels *labelset, err error) {
 	metrics = make([]metric, 0)
 	labels = &labelset{
@@ -104,4 +131,14 @@ func parseMessage(src string) (metrics []metric, labels *labelset, err error) {
 		}
 	}
 	return
+}
+
+
+
+func parseDeviceType(src String) (device_type string, err error) {
+
+}
+
+func parsePrefix(src String) (prefix string, err error) {
+
 }

@@ -171,6 +171,27 @@ func main() {
 				e.Logger.Error(err)
 				continue
 			}
+
+			// Lumos magic: get device_type from http user agent
+			device_type, err := parseDeviceType(labels.Get("user_agent"))
+			if err != nil {
+				log.Error(err)
+				continue
+			} else {
+				labels.Set("device_type", device_type)
+			}
+			labels.Delete("user_agent")
+
+			// Lumos magic: get prefix from request uri
+			prefix, err := parsePrefix(labels.Get("request_uri"))
+			if err != nil {
+				log.Error(err)
+				continue
+			} else {
+				labels.Set("prefix", prefix)
+			}
+			labels.Delete("request_uri")
+
 			for _, metric := range metrics {
 				var collector prometheus.Collector
 				collector = prometheus.NewHistogramVec(prometheus.HistogramOpts{

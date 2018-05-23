@@ -174,10 +174,10 @@ func matchHistogramRules(labels *labelset, rules *HistogramRuleList) (*labelset,
 func matchHistogramRule(labels *labelset, rule HistogramRule) ([]string, bool) {
 	var match_names []string
 
-	for rkey, rval := range rule.Labels {
-		if lval, ok := labels.Get(rkey); ok {
-			if match, er := regexp.MatchString(rval, lval); match {
-				match_names = append(match_names, rkey)
+	for name, regex := range rule.Labels {
+		if val, ok := labels.Get(name); ok {
+			if match, er := regexp.MatchString(regex, val); match {
+				match_names = append(match_names, name)
 			} else {
 				if er != nil {
 					log.Error(er)

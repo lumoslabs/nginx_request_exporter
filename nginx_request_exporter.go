@@ -35,9 +35,12 @@ import (
 const (
 	namespace = "nginx_request"
 
-	defaultListenAddr       = ":9147"
-	defaultTelemetryPath    = "/metrics"
-	defaultSyslogAddr       = "127.0.0.1:9514"
+	defaultListenAddr    = ":9147"
+	defaultTelemetryPath = "/metrics"
+	defaultSyslogAddr    = "127.0.0.1:9514"
+)
+
+var (
 	defaultHistogramBuckets = []string{".005", ".01", ".025", ".05", ".1", ".25", ".5", "1", "2.5", "5", "10"}
 )
 

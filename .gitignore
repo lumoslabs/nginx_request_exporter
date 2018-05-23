@@ -1,2 +1,3 @@
 nginx_request_exporter
 vendor/**
+*tar.gz

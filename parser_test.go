@@ -26,6 +26,5 @@ func TestParseRule(t *testing.T) {
 
 	for _, tt := range tests {
 		assert.Equal(t, tt.expected, parseRule(tt.src, defaultValue, rules))
-
 	}
 }

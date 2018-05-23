@@ -21,7 +21,7 @@ type Config struct {
 }
 
 type HistogramLabelConfig struct {
-	Labels map[string]string `json:"label"`
+	Labels map[string]string `json:"labels"`
 }
 
 type LabelConfig struct {

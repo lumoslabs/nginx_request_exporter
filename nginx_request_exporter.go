@@ -220,7 +220,7 @@ func main() {
 							continue
 						}
 					}
-					collector.(*prometheus.CounterVec).WithLabelValues(histLabels.Values...).Inc()
+					collector.(*prometheus.CounterVec).WithLabelValues(labels.Values...).Inc()
 				}
 			}
 		}

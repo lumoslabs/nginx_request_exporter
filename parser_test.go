@@ -69,17 +69,19 @@ func TestMatchHistogramRules(t *testing.T) {
 			},
 		}
 		tests = []struct {
-			labels   *labelset
-			expected int
+			labels *labelset
+			expLen int
+			expOk  bool
 		}{
-			{labels0, 0},
-			{labels1, 1},
-			{labels2, 2},
+			{labels0, 0, false},
+			{labels1, 1, true},
+			{labels2, 2, true},
 		}
 	)
 
 	for _, tt := range tests {
-		matches, _ := matchHistogramRules(tt.labels, histRules)
-		assert.Equal(t, tt.expected, len(matches))
+		matches, ok := matchHistogramRules(tt.labels, histRules)
+		assert.Equal(t, tt.expLen, len(matches))
+		assert.Equal(t, tt.expOk, ok)
 	}
 }

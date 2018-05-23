@@ -95,7 +95,6 @@ func main() {
 
 	e.Pre(middleware.RemoveTrailingSlash())
 	e.Use(middleware.Recover())
-	e.Use(middleware.Gzip())
 
 	// Setup HTTP server
 	e.GET(cfg.TelemetryPath, echo.WrapHandler(promhttp.Handler()))

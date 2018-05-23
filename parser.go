@@ -173,6 +173,7 @@ func matchHistogramRules(labels *labelset, rules *HistogramRuleList) ([]*labelse
 			}
 
 			matches = append(matches, histLabels)
+			matchOk = true
 		}
 	}
 

@@ -188,21 +188,40 @@ func main() {
 
 			for _, metric := range metrics {
 				var collector prometheus.Collector
-				collector = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-					Namespace: namespace,
-					Name:      metric.Name,
-					Help:      fmt.Sprintf("Nginx request log value for %s", metric.Name),
-					Buckets:   cfg.Buckets,
-				}, labels.Names)
-				if err := prometheus.Register(collector); err != nil {
-					if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
-						collector = are.ExistingCollector.(*prometheus.HistogramVec)
-					} else {
-						log.Error(err)
-						continue
+
+				if histLabels, ok := matchHistogramRules(labels, cfg.HistogramRules); ok {
+					collector = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+						Namespace: namespace,
+						Name:      metric.Name,
+						Help:      fmt.Sprintf("Nginx request log value for %s", metric.Name),
+						Buckets:   cfg.Buckets,
+					}, histLabels.Names)
+					if err := prometheus.Register(collector); err != nil {
+						if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+							collector = are.ExistingCollector.(*prometheus.HistogramVec)
+						} else {
+							log.Error(err)
+							continue
+						}
 					}
+					collector.(*prometheus.HistogramVec).WithLabelValues(histLabels.Values...).Observe(metric.Value)
+
+				} else {
+					collector = prometheus.NewCounterVec(prometheus.CounterOpts{
+						Namespace: namespace,
+						Name:      fmt.Sprintf("%s_count", metric.Name),
+						Help:      fmt.Sprintf("Nginx request log value for %s", metric.Name),
+					}, labels.Names)
+					if err := prometheus.Register(collector); err != nil {
+						if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+							collector = are.ExistingCollector.(*prometheus.CounterVec)
+						} else {
+							log.Error(err)
+							continue
+						}
+					}
+					collector.(*prometheus.CounterVec).WithLabelValues(histLabels.Values...).Inc()
 				}
-				collector.(*prometheus.HistogramVec).WithLabelValues(labels.Values...).Observe(metric.Value)
 			}
 		}
 	}()

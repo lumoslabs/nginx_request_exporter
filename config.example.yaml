@@ -17,7 +17,7 @@ prefix:
     - value: /api
 
 # Explicitly define which label sets should be histograms measuring response time
-histograms:
+histogram_rules:
   # Create histogram for all 200 responses for https://www.example.com
   - labels:
       host: ^www\.example\.com$

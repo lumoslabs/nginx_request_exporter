@@ -145,3 +145,49 @@ func parseRule(src, defaultValue string, rules *RuleList) string {
 	}
 	return defaultValue
 }
+
+func matchHistogramRules(labels *labelset, rules *HistogramRuleList) (*labelset, bool) {
+	for _, r := range *rules {
+		if match_names, ok := matchHistogramRule(labels, r); ok {
+			histLabels := &labelset{
+				Names:  make([]string, 0),
+				Values: make([]string, 0),
+			}
+
+			for _, name := range match_names {
+				histLabels.Names = append(histLabels.Names, name)
+
+				if val, ok := labels.Get(name); ok {
+					histLabels.Values = append(histLabels.Values, val)
+				} else {
+					return &labelset{}, false
+				}
+			}
+
+			return histLabels, true
+		}
+	}
+
+	return &labelset{}, false
+}
+
+func matchHistogramRule(labels *labelset, rule HistogramRule) ([]string, bool) {
+	var match_names []string
+
+	for rkey, rval := range rule.Labels {
+		if lval, ok := labels.Get(rkey); ok {
+			if match, er := regexp.MatchString(rval, lval); match {
+				match_names = append(match_names, rkey)
+			} else {
+				if er != nil {
+					log.Error(er)
+				}
+				return []string{}, false
+			}
+		} else {
+			return []string{}, false
+		}
+	}
+
+	return match_names, true
+}

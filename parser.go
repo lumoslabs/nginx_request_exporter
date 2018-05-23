@@ -137,7 +137,15 @@ func parseMessage(src string) (metrics []metric, labels *labelset, err error) {
 
 func parseRule(src, defaultValue string, rules *RuleList) string {
 	for _, r := range *rules {
-		if ok, er := regexp.MatchString(r.Regex, src); ok {
+		var regex string
+
+		if r.Regex == "" {
+			regex = fmt.Sprintf("^%s", r.Value)
+		} else {
+			regex = r.Regex
+		}
+
+		if ok, er := regexp.MatchString(regex, src); ok {
 			return r.Value
 		} else {
 			log.Error(er)

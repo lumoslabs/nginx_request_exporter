@@ -14,6 +14,9 @@ func TestParseRule(t *testing.T) {
 				Value: "ios",
 				Regex: "iPhone",
 			},
+			Rule{
+				Value: "/admin",
+			},
 		}
 		tests = []struct {
 			src      string
@@ -21,6 +24,7 @@ func TestParseRule(t *testing.T) {
 		}{
 			{"some iPhone device", "ios"},
 			{"some stupid browser", "web"},
+			{"/admin", "/admin"},
 		}
 	)
 

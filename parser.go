@@ -147,7 +147,7 @@ func parseRule(src, defaultValue string, rules *RuleList) string {
 
 		if ok, er := regexp.MatchString(regex, src); ok {
 			return r.Value
-		} else {
+		} else if er != nil {
 			log.Error(er)
 		}
 	}

@@ -1,0 +1,5 @@
+device_type:
+  default: web
+  rules:
+    - regex: iPhone
+      value: ios

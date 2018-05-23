@@ -38,7 +38,7 @@ const (
 	defaultListenAddr       = ":9147"
 	defaultTelemetryPath    = "/metrics"
 	defaultSyslogAddr       = "127.0.0.1:9514"
-	defaultHistogramBuckets = ".005,.01,.025,.05,.1,.25,.5,1,2.5,5,10"
+	defaultHistogramBuckets = []string{".005", ".01", ".025", ".05", ".1", ".25", ".5", "1", "2.5", "5", "10"}
 )
 
 var (
@@ -46,7 +46,7 @@ var (
 	listen        = kingpin.Flag("listen-address", "Address to listen on for scrapes.").Short('l').Default(defaultListenAddr).Envar("NGX_REQUEST_EXPORTER_LISTEN_ADDRESS").String()
 	telmPath      = kingpin.Flag("telemetry-path", "Path for exposing metrics.").Short('p').Default(defaultTelemetryPath).Envar("NGX_REQUEST_EXPORTER_TELEMETRY_PATH").String()
 	syslogAddress = kingpin.Flag("syslog-address", "Address for syslog.").Default(defaultSyslogAddr).Envar("NGZ_REQUEST_EXPORTER_SYSLOG_ADDRESS").String()
-	metricBuckets = kingpin.Flag("buckets", "Buckets for histogram.").Default(defaultHistogramBuckets).Envar("NGX_REQUEST_EXPORTER_BUCKETS").Float64List()
+	metricBuckets = kingpin.Flag("buckets", "Buckets for histogram.").Default(defaultHistogramBuckets...).Envar("NGX_REQUEST_EXPORTER_BUCKETS").Float64List()
 	grace         = kingpin.Flag("graceful-timeout", "Timeout for graceful shutdown.").Default("10s").Envar("NGX_REQUEST_EXPORTER_GRACEFUL_TIMEOUT").Duration()
 	v             = kingpin.Flag("v", "Log level. 0 = off, 1 = error, 2 = warn, 3 = info, 4 = debug").Short('v').Default("0").Envar("NGX_REQUEST_EXPORTER_LOG_LEVEL").Int()
 )

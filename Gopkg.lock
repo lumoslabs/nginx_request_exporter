@@ -117,6 +117,7 @@
   packages = [
     "expfmt",
     "internal/bitbucket.org/ww/goautoneg",
+    "log",
     "model"
   ]
   revision = "7600349dcfe1abd18d72d3a1770870d9800a7801"
@@ -131,6 +132,12 @@
     "xfs"
   ]
   revision = "8b1c2da0d56deffdbb9e48d4414b4e674bd8083e"
+
+[[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
+  version = "v1.0.5"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -158,14 +165,20 @@
   name = "golang.org/x/crypto"
   packages = [
     "acme",
-    "acme/autocert"
+    "acme/autocert",
+    "ssh/terminal"
   ]
   revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "unix",
+    "windows",
+    "windows/registry",
+    "windows/svc/eventlog"
+  ]
   revision = "88eb85aaee56831ad49eaf7aa80d73de9814cde2"
 
 [[projects]]
@@ -195,6 +208,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8f38ead839c483ea15e3b5243f1cbf079f7cb9ecbc4f4f2b4a166c3e671528eb"
+  inputs-digest = "16bd85c7f637e6c44111f044abb8bd9d8ffa33f8964c8ee9bd663fa63b56360f"
   solver-name = "gps-cdcl"
   solver-version = 1

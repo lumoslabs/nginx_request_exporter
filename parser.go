@@ -16,9 +16,12 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/scanner"
+
+	"github.com/prometheus/common/log"
 )
 
 type metric struct {
@@ -41,6 +44,32 @@ func (l *labelset) Equals(labels []string) bool {
 		}
 	}
 	return true
+}
+
+func (l *labelset) Get(key string) (string, bool) {
+	for i, k := range l.Names {
+		if k == key {
+			return l.Values[i], true
+		}
+	}
+	return "", false
+}
+
+func (l *labelset) Set(key, val string) {
+	if _, exists := l.Get(key); exists {
+		l.Delete(key)
+	}
+	l.Names = append(l.Names, key)
+	l.Values = append(l.Values, val)
+}
+
+func (l *labelset) Delete(key string) {
+	for i, k := range l.Names {
+		if k == key {
+			l.Names = append(l.Names[:i], l.Names[i+1:]...)
+			l.Values = append(l.Values[:i], l.Values[i+1:]...)
+		}
+	}
 }
 
 func parseMessage(src string) (metrics []metric, labels *labelset, err error) {
@@ -104,4 +133,70 @@ func parseMessage(src string) (metrics []metric, labels *labelset, err error) {
 		}
 	}
 	return
+}
+
+func parseRule(src, defaultValue string, rules *RuleList) string {
+	for _, r := range *rules {
+		var regex string
+
+		if r.Regex == "" {
+			regex = fmt.Sprintf("^%s", r.Value)
+		} else {
+			regex = r.Regex
+		}
+
+		if ok, er := regexp.MatchString(regex, src); ok {
+			return r.Value
+		} else if er != nil {
+			log.Error(er)
+		}
+	}
+	return defaultValue
+}
+
+func matchHistogramRules(labels *labelset, rules *HistogramRuleList) ([]*labelset, bool) {
+	var matches []*labelset
+	matchOk := false
+
+	for _, r := range *rules {
+		if match_names, ok := matchHistogramRule(labels, r); ok {
+			histLabels := &labelset{
+				Names:  make([]string, 0),
+				Values: make([]string, 0),
+			}
+
+			for _, name := range match_names {
+				if val, ok := labels.Get(name); ok {
+					histLabels.Names = append(histLabels.Names, name)
+					histLabels.Values = append(histLabels.Values, val)
+				}
+			}
+
+			matches = append(matches, histLabels)
+			matchOk = true
+		}
+	}
+
+	return matches, matchOk
+}
+
+func matchHistogramRule(labels *labelset, rule HistogramRule) ([]string, bool) {
+	var match_names []string
+
+	for name, regex := range rule.Labels {
+		if val, ok := labels.Get(name); ok {
+			if match, er := regexp.MatchString(regex, val); match {
+				match_names = append(match_names, name)
+			} else {
+				if er != nil {
+					log.Error(er)
+				}
+				return []string{}, false
+			}
+		} else {
+			return []string{}, false
+		}
+	}
+
+	return match_names, true
 }

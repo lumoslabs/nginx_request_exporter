@@ -35,10 +35,13 @@ import (
 const (
 	namespace = "nginx_request"
 
-	defaultListenAddr       = ":9147"
-	defaultTelemetryPath    = "/metrics"
-	defaultSyslogAddr       = "127.0.0.1:9514"
-	defaultHistogramBuckets = ".005,.01,.025,.05,.1,.25,.5,1,2.5,5,10"
+	defaultListenAddr    = ":9147"
+	defaultTelemetryPath = "/metrics"
+	defaultSyslogAddr    = "127.0.0.1:9514"
+)
+
+var (
+	defaultHistogramBuckets = []string{".005", ".01", ".025", ".05", ".1", ".25", ".5", "1", "2.5", "5", "10"}
 )
 
 var (
@@ -46,7 +49,7 @@ var (
 	listen        = kingpin.Flag("listen-address", "Address to listen on for scrapes.").Short('l').Default(defaultListenAddr).Envar("NGX_REQUEST_EXPORTER_LISTEN_ADDRESS").String()
 	telmPath      = kingpin.Flag("telemetry-path", "Path for exposing metrics.").Short('p').Default(defaultTelemetryPath).Envar("NGX_REQUEST_EXPORTER_TELEMETRY_PATH").String()
 	syslogAddress = kingpin.Flag("syslog-address", "Address for syslog.").Default(defaultSyslogAddr).Envar("NGZ_REQUEST_EXPORTER_SYSLOG_ADDRESS").String()
-	metricBuckets = kingpin.Flag("buckets", "Buckets for histogram.").Default(defaultHistogramBuckets).Envar("NGX_REQUEST_EXPORTER_BUCKETS").Float64List()
+	metricBuckets = kingpin.Flag("buckets", "Buckets for histogram.").Default(defaultHistogramBuckets...).Envar("NGX_REQUEST_EXPORTER_BUCKETS").Float64List()
 	grace         = kingpin.Flag("graceful-timeout", "Timeout for graceful shutdown.").Default("10s").Envar("NGX_REQUEST_EXPORTER_GRACEFUL_TIMEOUT").Duration()
 	v             = kingpin.Flag("v", "Log level. 0 = off, 1 = error, 2 = warn, 3 = info, 4 = debug").Short('v').Default("0").Envar("NGX_REQUEST_EXPORTER_LOG_LEVEL").Int()
 )
@@ -92,7 +95,6 @@ func main() {
 
 	e.Pre(middleware.RemoveTrailingSlash())
 	e.Use(middleware.Recover())
-	e.Use(middleware.Gzip())
 
 	// Setup HTTP server
 	e.GET(cfg.TelemetryPath, echo.WrapHandler(promhttp.Handler()))
@@ -171,23 +173,58 @@ func main() {
 				e.Logger.Error(err)
 				continue
 			}
+
+			// Lumos magic: get device_type from http user agent
+			if user_agent, ok := labels.Get("user_agent"); ok {
+				device_type := parseRule(user_agent, cfg.DeviceType.Default, cfg.DeviceType.Rules)
+				labels.Set("device_type", device_type)
+			}
+			labels.Delete("user_agent")
+
+			// Lumos magic: get prefix from request uri
+			if request_uri, ok := labels.Get("request_uri"); ok {
+				prefix := parseRule(request_uri, cfg.Prefix.Default, cfg.Prefix.Rules)
+				labels.Set("prefix", prefix)
+			}
+			labels.Delete("request_uri")
+
 			for _, metric := range metrics {
 				var collector prometheus.Collector
-				collector = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-					Namespace: namespace,
-					Name:      metric.Name,
-					Help:      fmt.Sprintf("Nginx request log value for %s", metric.Name),
-					Buckets:   cfg.Buckets,
-				}, labels.Names)
-				if err := prometheus.Register(collector); err != nil {
-					if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
-						collector = are.ExistingCollector.(*prometheus.HistogramVec)
-					} else {
-						log.Error(err)
-						continue
+
+				if matches, ok := matchHistogramRules(labels, cfg.HistogramRules); ok {
+					for _, histLabels := range matches {
+						collector = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+							Namespace: namespace,
+							Name:      metric.Name,
+							Help:      fmt.Sprintf("Nginx request log value for %s", metric.Name),
+							Buckets:   cfg.Buckets,
+						}, histLabels.Names)
+						if err := prometheus.Register(collector); err != nil {
+							if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+								collector = are.ExistingCollector.(*prometheus.HistogramVec)
+							} else {
+								log.Error(err)
+								continue
+							}
+						}
+						collector.(*prometheus.HistogramVec).WithLabelValues(histLabels.Values...).Observe(metric.Value)
 					}
+				} else {
+					collector = prometheus.NewCounterVec(prometheus.CounterOpts{
+						Namespace: namespace,
+						Name:      fmt.Sprintf("%s_count", metric.Name),
+						Help:      fmt.Sprintf("Nginx request log value for %s", metric.Name),
+					}, labels.Names)
+					if err := prometheus.Register(collector); err != nil {
+						if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+							collector = are.ExistingCollector.(*prometheus.CounterVec)
+						} else {
+							log.Error(err)
+							continue
+						}
+					}
+					collector.(*prometheus.CounterVec).WithLabelValues(labels.Values...).Inc()
 				}
-				collector.(*prometheus.HistogramVec).WithLabelValues(labels.Values...).Observe(metric.Value)
 			}
 		}
 	}()

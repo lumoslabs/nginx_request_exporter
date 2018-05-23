@@ -11,17 +11,13 @@ import (
 var cfg *Config
 
 type Config struct {
-	ListenAddress string                  `json:"listen_address,omitempty"`
-	TelemetryPath string                  `json:"telemetry_path,omitempty"`
-	SyslogAddress string                  `json:"syslog_address,omitempty"`
-	Buckets       []float64               `json:"buckets,omitempty"`
-	DeviceType    *LabelConfig            `json:"device_type"`
-	Prefix        *LabelConfig            `json:"prefix"`
-	Histograms    []*HistogramLabelConfig `json:"histograms"`
-}
-
-type HistogramLabelConfig struct {
-	Labels map[string]string `json:"label"`
+	ListenAddress  string             `json:"listen_address,omitempty"`
+	TelemetryPath  string             `json:"telemetry_path,omitempty"`
+	SyslogAddress  string             `json:"syslog_address,omitempty"`
+	Buckets        []float64          `json:"buckets,omitempty"`
+	DeviceType     *LabelConfig       `json:"device_type"`
+	Prefix         *LabelConfig       `json:"prefix"`
+	HistogramRules *HistogramRuleList `json:"histogram_rules"`
 }
 
 type LabelConfig struct {
@@ -29,12 +25,18 @@ type LabelConfig struct {
 	Rules   *RuleList `json:"rules,omitempty"`
 }
 
-type RuleList []Rule
-
 type Rule struct {
 	Value string `json:"value"`
 	Regex string `json:"regex,omitempty"`
 }
+
+type RuleList []Rule
+
+type HistogramRule struct {
+	Labels map[string]string `json:"labels"`
+}
+
+type HistogramRuleList []HistogramRule
 
 func Configure(path string, src *Config) (*Config, error) {
 	var (

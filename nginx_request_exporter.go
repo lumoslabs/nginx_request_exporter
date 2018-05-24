@@ -41,6 +41,7 @@ const (
 )
 
 var (
+	e                       *echo.Echo
 	defaultHistogramBuckets = []string{".005", ".01", ".025", ".05", ".1", ".25", ".5", "1", "2.5", "5", "10"}
 )
 
@@ -89,7 +90,7 @@ func main() {
 		panic(er)
 	}
 
-	e := echo.New()
+	e = echo.New()
 	e.HideBanner = true
 	e.Logger.SetLevel(logLevel())
 
@@ -175,14 +176,14 @@ func main() {
 			}
 
 			// Lumos magic: get device_type from http user agent
-			if user_agent, ok := labels.Get("user_agent"); ok {
+			if user_agent, ok := labels.Get("user_agent"); ok && cfg.DeviceType != nil {
 				device_type := parseRule(user_agent, cfg.DeviceType.Default, cfg.DeviceType.Rules)
 				labels.Set("device_type", device_type)
 			}
 			labels.Delete("user_agent")
 
 			// Lumos magic: get prefix from request uri
-			if request_uri, ok := labels.Get("request_uri"); ok {
+			if request_uri, ok := labels.Get("request_uri"); ok && cfg.Prefix != nil {
 				prefix := parseRule(request_uri, cfg.Prefix.Default, cfg.Prefix.Rules)
 				labels.Set("prefix", prefix)
 			}

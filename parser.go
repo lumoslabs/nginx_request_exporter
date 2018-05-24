@@ -136,6 +136,10 @@ func parseMessage(src string) (metrics []metric, labels *labelset, err error) {
 }
 
 func parseRule(src, defaultValue string, rules *RuleList) string {
+	if rules == nil {
+		return defaultValue
+	}
+
 	for _, r := range *rules {
 		var regex string
 
@@ -154,18 +158,21 @@ func parseRule(src, defaultValue string, rules *RuleList) string {
 	return defaultValue
 }
 
-func matchHistogramRules(labels *labelset, rules *HistogramRuleList) ([]*labelset, bool) {
-	var matches []*labelset
-	matchOk := false
+func matchHistogramRules(labels *labelset, rules *HistogramRuleList) (matches []*labelset, matchOk bool) {
+	matches = make([]*labelset, 0)
+
+	if rules == nil {
+		return
+	}
 
 	for _, r := range *rules {
-		if match_names, ok := matchHistogramRule(labels, r); ok {
+		if matchNames, ok := matchHistogramRule(labels, r); ok {
 			histLabels := &labelset{
 				Names:  make([]string, 0),
 				Values: make([]string, 0),
 			}
 
-			for _, name := range match_names {
+			for _, name := range matchNames {
 				if val, ok := labels.Get(name); ok {
 					histLabels.Names = append(histLabels.Names, name)
 					histLabels.Values = append(histLabels.Values, val)
@@ -177,26 +184,27 @@ func matchHistogramRules(labels *labelset, rules *HistogramRuleList) ([]*labelse
 		}
 	}
 
-	return matches, matchOk
+	return
 }
 
-func matchHistogramRule(labels *labelset, rule HistogramRule) ([]string, bool) {
-	var match_names []string
+func matchHistogramRule(labels *labelset, rule HistogramRule) (matchNames []string, matchOk bool) {
+	matchNames = make([]string, 0)
 
 	for name, regex := range rule.Labels {
 		if val, ok := labels.Get(name); ok {
 			if match, er := regexp.MatchString(regex, val); match {
-				match_names = append(match_names, name)
+				matchNames = append(matchNames, name)
 			} else {
 				if er != nil {
 					log.Error(er)
 				}
-				return []string{}, false
+				return
 			}
 		} else {
-			return []string{}, false
+			return
 		}
 	}
 
-	return match_names, true
+	matchOk = true
+	return
 }

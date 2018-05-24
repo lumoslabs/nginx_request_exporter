@@ -168,7 +168,7 @@
     "acme/autocert",
     "ssh/terminal"
   ]
-  revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
+  revision = "75e913eb8a8e3d31a97b216de09de106a7b07681"
 
 [[projects]]
   branch = "master"
@@ -179,7 +179,7 @@
     "windows/registry",
     "windows/svc/eventlog"
   ]
-  revision = "88eb85aaee56831ad49eaf7aa80d73de9814cde2"
+  revision = "77b0e4315053a57ed2962443614bdb28db152054"
 
 [[projects]]
   name = "gopkg.in/alecthomas/kingpin.v2"
@@ -208,6 +208,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "16bd85c7f637e6c44111f044abb8bd9d8ffa33f8964c8ee9bd663fa63b56360f"
+  inputs-digest = "8da9a17149a3363cfc00e56fe48d36cadae14f3795c4b266e24e35649586be6a"
   solver-name = "gps-cdcl"
   solver-version = 1

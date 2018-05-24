@@ -63,10 +63,6 @@ func newConfigFromFile(path string) (*Config, error) {
 	return &c, nil
 }
 
-func (c *Config) merge(src *Config) error {
-	return mergo.Merge(c, src)
-}
-
 func (c *Config) mergeWithOverwrite(src *Config) error {
-	return mergo.MergeWithOverwrite(c, src)
+	return mergo.Merge(c, src, mergo.WithOverride)
 }

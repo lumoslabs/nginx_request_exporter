@@ -37,6 +37,10 @@
   name = "gopkg.in/mcuadros/go-syslog.v2"
   version = "2.2.1"
 
+[[constraint]]
+  name = "github.com/imdario/mergo"
+  version = "0.3.4"
+
 [prune]
   go-tests = true
   unused-packages = true

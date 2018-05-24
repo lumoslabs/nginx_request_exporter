@@ -2,7 +2,7 @@ package main
 
 import "strings"
 
-const Version = "0.0.3"
+const Version = "0.0.4"
 
 var (
 	REFERENCE string

@@ -1,0 +1,7 @@
+prefix:
+  default: "web"
+  rules:
+    - regex: ^/$
+      value: /
+    - value: /admin  # Implicit regex adds start anchor ^ to value
+    - value: /api

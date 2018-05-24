@@ -8,11 +8,13 @@ export GODEBUG=netdns=cgo
 
 export VERSION=`perl -ne 'print "v$1\n" if /Version = "(.+)"/' doc.go`
 export OUTFILE="nginx_request_exporter-$VERSION.$GOOS-$GOARCH"
+export REFERENCE=${REFERENCE:-$(git rev-parse --abbrev-ref HEAD)}
+export REVISION=${REVISION:-$(git rev-parse --short=8 HEAD)}
 
 dep ensure -v -vendor-only
 
 go build -v -a \
-  -ldflags "-s -X main.REFERENCE=$REF -X main.REVISION=$REV" \
+  -ldflags "-s -X main.REFERENCE=$REFERENCE -X main.REVISION=$REVISION" \
   -installsuffix cgo \
   -o $OUTFILE
 

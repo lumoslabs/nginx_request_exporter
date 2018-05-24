@@ -33,6 +33,7 @@ import (
 )
 
 const (
+	app       = "nginx_request_exporter"
 	namespace = "nginx_request"
 
 	defaultListenAddr    = ":9147"
@@ -46,13 +47,29 @@ var (
 )
 
 var (
-	confPath      = kingpin.Flag("config", "Path to config file.").Short('C').Envar("NGX_REQUEST_EXPORTER_CONFIG_PATH").Required().ExistingFile()
-	listen        = kingpin.Flag("listen-address", "Address to listen on for scrapes.").Short('l').Default(defaultListenAddr).Envar("NGX_REQUEST_EXPORTER_LISTEN_ADDRESS").String()
-	telmPath      = kingpin.Flag("telemetry-path", "Path for exposing metrics.").Short('p').Default(defaultTelemetryPath).Envar("NGX_REQUEST_EXPORTER_TELEMETRY_PATH").String()
-	syslogAddress = kingpin.Flag("syslog-address", "Address for syslog.").Default(defaultSyslogAddr).Envar("NGZ_REQUEST_EXPORTER_SYSLOG_ADDRESS").String()
-	metricBuckets = kingpin.Flag("buckets", "Buckets for histogram.").Default(defaultHistogramBuckets...).Envar("NGX_REQUEST_EXPORTER_BUCKETS").Float64List()
-	grace         = kingpin.Flag("graceful-timeout", "Timeout for graceful shutdown.").Default("10s").Envar("NGX_REQUEST_EXPORTER_GRACEFUL_TIMEOUT").Duration()
-	v             = kingpin.Flag("v", "Log level. 0 = off, 1 = error, 2 = warn, 3 = info, 4 = debug").Short('v').Default("0").Envar("NGX_REQUEST_EXPORTER_LOG_LEVEL").Int()
+	exporter      = kingpin.New(app, "Gather metrics from nginx access logs over a syslog channel.")
+	confPath      = exporter.Flag("config", "Path to config file.").Short('C').Envar("NGX_REQUEST_EXPORTER_CONFIG_PATH").Required().ExistingFile()
+	listen        = exporter.Flag("listen-address", "Address to listen on for scrapes.").Short('l').Default(defaultListenAddr).Envar("NGX_REQUEST_EXPORTER_LISTEN_ADDRESS").String()
+	telmPath      = exporter.Flag("telemetry-path", "Path for exposing metrics.").Short('p').Default(defaultTelemetryPath).Envar("NGX_REQUEST_EXPORTER_TELEMETRY_PATH").String()
+	syslogAddress = exporter.Flag("syslog-address", "Address for syslog.").Default(defaultSyslogAddr).Envar("NGZ_REQUEST_EXPORTER_SYSLOG_ADDRESS").String()
+	metricBuckets = exporter.Flag("buckets", "Buckets for histogram.").Default(defaultHistogramBuckets...).Envar("NGX_REQUEST_EXPORTER_BUCKETS").Float64List()
+	grace         = exporter.Flag("graceful-timeout", "Timeout for graceful shutdown.").Default("10s").Envar("NGX_REQUEST_EXPORTER_GRACEFUL_TIMEOUT").Duration()
+	v             = exporter.Flag("v", "Log level. 0 = off, 1 = error, 2 = warn, 3 = info, 4 = debug").Short('v').Default("0").Envar("NGX_REQUEST_EXPORTER_LOG_LEVEL").Int()
+
+	defaultConfig = &Config{
+		ListenAddress: *listen,
+		TelemetryPath: *telmPath,
+		SyslogAddress: *syslogAddress,
+		Buckets:       *metricBuckets,
+		Prefix: &LabelConfig{
+			Default: "",
+			Rules:   nil,
+		},
+		DeviceType: &LabelConfig{
+			Default: "",
+			Rules:   nil,
+		},
+	}
 )
 
 func logLevel() (l log.Lvl) {
@@ -72,20 +89,9 @@ func logLevel() (l log.Lvl) {
 }
 
 func main() {
-	kingpin.Parse()
+	kingpin.MustParse(exporter.Parse(os.Args[1:]))
 	var er error
-	cfg, er = Configure(*confPath, &Config{
-		ListenAddress: *listen,
-		TelemetryPath: *telmPath,
-		SyslogAddress: *syslogAddress,
-		Buckets:       *metricBuckets,
-		DeviceType: &LabelConfig{
-			Default: "",
-		},
-		Prefix: &LabelConfig{
-			Default: "",
-		},
-	})
+	cfg, er = Configure(*confPath, defaultConfig)
 	if er != nil {
 		panic(er)
 	}
@@ -176,16 +182,14 @@ func main() {
 			}
 
 			// Lumos magic: get device_type from http user agent
-			if user_agent, ok := labels.Get("user_agent"); ok && cfg.DeviceType != nil {
-				device_type := parseRule(user_agent, cfg.DeviceType.Default, cfg.DeviceType.Rules)
-				labels.Set("device_type", device_type)
+			if userAgent, ok := labels.Get("user_agent"); ok && cfg.DeviceType != nil {
+				labels.Set("device_type", parseRule(userAgent, cfg.DeviceType.Default, cfg.DeviceType.Rules))
 			}
 			labels.Delete("user_agent")
 
 			// Lumos magic: get prefix from request uri
-			if request_uri, ok := labels.Get("request_uri"); ok && cfg.Prefix != nil {
-				prefix := parseRule(request_uri, cfg.Prefix.Default, cfg.Prefix.Rules)
-				labels.Set("prefix", prefix)
+			if requestURI, ok := labels.Get("request_uri"); ok && cfg.Prefix != nil {
+				labels.Set("prefix", parseRule(requestURI, cfg.Prefix.Default, cfg.Prefix.Rules))
 			}
 			labels.Delete("request_uri")
 

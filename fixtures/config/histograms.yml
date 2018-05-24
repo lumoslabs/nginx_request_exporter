@@ -1,21 +1,3 @@
-# device_type is derived by parsing the user-agent string
-device_type:
-  default: web
-  rules:
-    - regex: spider|crawl|slurp|bot
-      value: bot
-    - regex: iPhone
-      value: ios
-
-# prefix is derived by parsing the request URI
-prefix:
-  default: "" # Empty string
-  rules:
-    - regex: ^/$
-      value: /
-    - value: /admin  # Implicit regex adds start anchor ^ to value
-    - value: /api
-
 # Explicitly define which label sets should be histograms measuring response time
 histogram_rules:
   # Create histogram for all 200 responses for https://www.example.com

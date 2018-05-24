@@ -48,7 +48,7 @@ func Configure(path string, src *Config) (*Config, error) {
 			return nil, fmt.Errorf("Failed to read config: %v", er)
 		}
 	}
-	return c, c.mergeWithOverwrite(src)
+	return src, src.mergeWithOverwrite(c)
 }
 
 func newConfigFromFile(path string) (*Config, error) {

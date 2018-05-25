@@ -53,23 +53,9 @@ var (
 	telmPath      = exporter.Flag("telemetry-path", "Path for exposing metrics.").Short('p').Default(defaultTelemetryPath).Envar("NGX_REQUEST_EXPORTER_TELEMETRY_PATH").String()
 	syslogAddress = exporter.Flag("syslog-address", "Address for syslog.").Default(defaultSyslogAddr).Envar("NGZ_REQUEST_EXPORTER_SYSLOG_ADDRESS").String()
 	metricBuckets = exporter.Flag("buckets", "Buckets for histogram.").Default(defaultHistogramBuckets...).Envar("NGX_REQUEST_EXPORTER_BUCKETS").Float64List()
+	gzip          = exporter.Flag("gzip", "Use gzip compression on metrics response.").Envar("NGX_REQUEST_EXPORTER_GZIP").Bool()
 	grace         = exporter.Flag("graceful-timeout", "Timeout for graceful shutdown.").Default("10s").Envar("NGX_REQUEST_EXPORTER_GRACEFUL_TIMEOUT").Duration()
 	v             = exporter.Flag("v", "Log level. 0 = off, 1 = error, 2 = warn, 3 = info, 4 = debug").Short('v').Default("0").Envar("NGX_REQUEST_EXPORTER_LOG_LEVEL").Int()
-
-	defaultConfig = &Config{
-		ListenAddress: *listen,
-		TelemetryPath: *telmPath,
-		SyslogAddress: *syslogAddress,
-		Buckets:       *metricBuckets,
-		Prefix: &LabelConfig{
-			Default: "",
-			Rules:   nil,
-		},
-		DeviceType: &LabelConfig{
-			Default: "",
-			Rules:   nil,
-		},
-	}
 )
 
 func logLevel() (l log.Lvl) {
@@ -89,9 +75,22 @@ func logLevel() (l log.Lvl) {
 }
 
 func main() {
+	exporter.Version(version())
 	kingpin.MustParse(exporter.Parse(os.Args[1:]))
-	var er error
-	cfg, er = Configure(*confPath, defaultConfig)
+	cfg, er := Configure(*confPath, &Config{
+		ListenAddress: *listen,
+		TelemetryPath: *telmPath,
+		SyslogAddress: *syslogAddress,
+		Buckets:       *metricBuckets,
+		Prefix: &LabelConfig{
+			Default: "",
+			Rules:   nil,
+		},
+		DeviceType: &LabelConfig{
+			Default: "",
+			Rules:   nil,
+		},
+	})
 	if er != nil {
 		panic(er)
 	}
@@ -102,6 +101,9 @@ func main() {
 
 	e.Pre(middleware.RemoveTrailingSlash())
 	e.Use(middleware.Recover())
+	if *gzip {
+		e.Use(middleware.Gzip())
+	}
 
 	// Setup HTTP server
 	e.GET(cfg.TelemetryPath, echo.WrapHandler(promhttp.Handler()))

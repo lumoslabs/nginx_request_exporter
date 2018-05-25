@@ -33,6 +33,12 @@ func histogramTests(t *testing.T, c *Config) {
 	assert.Equal(t, ".*", (*c.HistogramRules)[1].Labels["prefix"])
 }
 
+func defaultConfigTests(t *testing.T, c *Config) {
+	assert.Equal(t, defaultListenAddr, c.ListenAddress)
+	assert.Equal(t, defaultTelemetryPath, c.TelemetryPath)
+	assert.Equal(t, defaultSyslogAddr, c.SyslogAddress)
+}
+
 func TestConfig(t *testing.T) {
 	var (
 		tests = []struct {
@@ -46,6 +52,7 @@ func TestConfig(t *testing.T) {
 			{"fixtures/config/prefix.yml", true, prefixTests},
 			{"fixtures/config/prefix-no-default.yml", true, prefixNoDefaultTests},
 			{"fixtures/config/histograms.yml", true, histogramTests},
+			{"fixtures/config/histograms.yml", true, defaultConfigTests},
 		}
 	)
 

@@ -24,6 +24,5 @@ RUN go build -v -a \
 
 FROM scratch
 EXPOSE 9147 9514/udp
-USER nobody
 ENTRYPOINT ["/nginx_request_exporter"]
 COPY --from=build /nginx_request_exporter /

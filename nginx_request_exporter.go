@@ -55,21 +55,6 @@ var (
 	metricBuckets = exporter.Flag("buckets", "Buckets for histogram.").Default(defaultHistogramBuckets...).Envar("NGX_REQUEST_EXPORTER_BUCKETS").Float64List()
 	grace         = exporter.Flag("graceful-timeout", "Timeout for graceful shutdown.").Default("10s").Envar("NGX_REQUEST_EXPORTER_GRACEFUL_TIMEOUT").Duration()
 	v             = exporter.Flag("v", "Log level. 0 = off, 1 = error, 2 = warn, 3 = info, 4 = debug").Short('v').Default("0").Envar("NGX_REQUEST_EXPORTER_LOG_LEVEL").Int()
-
-	defaultConfig = &Config{
-		ListenAddress: *listen,
-		TelemetryPath: *telmPath,
-		SyslogAddress: *syslogAddress,
-		Buckets:       *metricBuckets,
-		Prefix: &LabelConfig{
-			Default: "",
-			Rules:   nil,
-		},
-		DeviceType: &LabelConfig{
-			Default: "",
-			Rules:   nil,
-		},
-	}
 )
 
 func logLevel() (l log.Lvl) {
@@ -89,9 +74,22 @@ func logLevel() (l log.Lvl) {
 }
 
 func main() {
+	kingpin.Version(version())
 	kingpin.MustParse(exporter.Parse(os.Args[1:]))
-	var er error
-	cfg, er = Configure(*confPath, defaultConfig)
+	cfg, er := Configure(*confPath, &Config{
+		ListenAddress: *listen,
+		TelemetryPath: *telmPath,
+		SyslogAddress: *syslogAddress,
+		Buckets:       *metricBuckets,
+		Prefix: &LabelConfig{
+			Default: "",
+			Rules:   nil,
+		},
+		DeviceType: &LabelConfig{
+			Default: "",
+			Rules:   nil,
+		},
+	})
 	if er != nil {
 		panic(er)
 	}

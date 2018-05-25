@@ -49,6 +49,21 @@ func TestConfig(t *testing.T) {
 		}
 	)
 
+	defaultConfig := &Config{
+		ListenAddress: defaultListenAddr,
+		TelemetryPath: defaultTelemetryPath,
+		SyslogAddress: defaultSyslogAddr,
+		Buckets:       []float64{0.1, 0.5},
+		Prefix: &LabelConfig{
+			Default: "",
+			Rules:   nil,
+		},
+		DeviceType: &LabelConfig{
+			Default: "",
+			Rules:   nil,
+		},
+	}
+
 	for _, tt := range tests {
 		if c, er := Configure(tt.path, defaultConfig); tt.pass {
 			assert.NoError(t, er)

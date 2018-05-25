@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"text/scanner"
@@ -205,6 +206,7 @@ func matchHistogramRule(labels *labelset, rule HistogramRule) (matchNames []stri
 		}
 	}
 
+	sort.Strings(matchNames)
 	matchOk = true
 	return
 }

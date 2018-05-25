@@ -195,9 +195,10 @@ func main() {
 			}
 			labels.Delete("request_uri")
 
-			for _, metric := range metrics {
-				var collector prometheus.Collector
+			var collector prometheus.Collector
 
+			for _, metric := range metrics {
+				// Create histogram metrics if there are any matches according to histogram rules
 				if matches, ok := matchHistogramRules(labels, cfg.HistogramRules); ok {
 					for _, histLabels := range matches {
 						collector = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -216,23 +217,24 @@ func main() {
 						}
 						collector.(*prometheus.HistogramVec).WithLabelValues(histLabels.Values...).Observe(metric.Value)
 					}
-				} else {
-					collector = prometheus.NewCounterVec(prometheus.CounterOpts{
-						Namespace: namespace,
-						Name:      fmt.Sprintf("%s_count", metric.Name),
-						Help:      fmt.Sprintf("Nginx request log value for %s", metric.Name),
-					}, labels.Names)
-					if err := prometheus.Register(collector); err != nil {
-						if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
-							collector = are.ExistingCollector.(*prometheus.CounterVec)
-						} else {
-							log.Error(err)
-							continue
-						}
-					}
-					collector.(*prometheus.CounterVec).WithLabelValues(labels.Values...).Inc()
 				}
 			}
+
+			// Always create a counter
+			collector = prometheus.NewCounterVec(prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      fmt.Sprint("requests_total"),
+				Help:      fmt.Sprintf("Nginx total requests"),
+			}, labels.Names)
+			if err := prometheus.Register(collector); err != nil {
+				if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+					collector = are.ExistingCollector.(*prometheus.CounterVec)
+				} else {
+					log.Error(err)
+					continue
+				}
+			}
+			collector.(*prometheus.CounterVec).WithLabelValues(labels.Values...).Inc()
 		}
 	}()
 

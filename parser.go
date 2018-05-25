@@ -169,14 +169,15 @@ func matchHistogramRules(labels *labelset, rules *HistogramRuleList) (matches []
 	for _, r := range *rules {
 		if matchNames, ok := matchHistogramRule(labels, r); ok {
 			histLabels := &labelset{
-				Names:  make([]string, 0),
-				Values: make([]string, 0),
+				Names:  make([]string, len(labels.Names)),
+				Values: make([]string, len(labels.Values)),
 			}
+
+			copy(histLabels.Names, labels.Names)
 
 			for _, name := range matchNames {
 				if val, ok := labels.Get(name); ok {
-					histLabels.Names = append(histLabels.Names, name)
-					histLabels.Values = append(histLabels.Values, val)
+					histLabels.Set(name, val)
 				}
 			}
 

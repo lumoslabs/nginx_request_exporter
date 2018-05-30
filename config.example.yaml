@@ -16,15 +16,21 @@ prefix:
     - value: /admin  # Implicit regex adds start anchor ^ to value
     - value: /api
 
-# Explicitly define which label sets should be histograms measuring response time
+# Define specific histograms for a given metric and label set
 histogram_rules:
-  # Create histogram for all 200 responses for https://www.example.com
-  - labels:
-      host: ^www\.example\.com$
+  - metric: time
+    name: time
+    labels:
+      host: ^(www\.example\.com|www\.example2\.com)
       scheme: https
-      status: 200
-  # Create histogram for each prefix for https://www.example.com
-  - labels:
-      host: ^www\.example\.com$
+  - metric: time
+    name: time_prefix
+    labels:
+      host: ^www\.example\.com
       scheme: https
       prefix: .*
+  - metric: length
+    name: length
+    labels:
+      host: ^(www\.example\.com|www\.example2\.com)
+      scheme: https

@@ -35,53 +35,82 @@ func TestParseRule(t *testing.T) {
 
 func TestMatchHistogramRules(t *testing.T) {
 	var (
-		labels0 = &labelset{
+		metric = "time"
+
+		labels_no_matches = &labelset{
 			Names:  []string{"host", "status", "scheme"},
-			Values: []string{"www.example.com", "404", "http"},
+			Values: []string{"nomatch.example.com", "404", "http"},
 		}
-		labels1 = &labelset{
+		labels_one_match = &labelset{
 			Names:  []string{"host", "status", "scheme"},
 			Values: []string{"www.example.com", "200", "http"},
 		}
-		labels2 = &labelset{
+		labels_two_matches = &labelset{
 			Names:  []string{"host", "status", "scheme"},
 			Values: []string{"www.example.com", "200", "https"},
 		}
+		labels_metric_rename = &labelset{
+			Names:  []string{"host", "scheme", "prefix"},
+			Values: []string{"www.example2.com", "https", "/"},
+		}
+
 		histRules = &HistogramRuleList{
 			HistogramRule{
+				Metric: metric,
+				Name:   "time",
 				Labels: map[string]string{
 					"host":   "www.example.com",
 					"status": "200",
 				},
 			},
 			HistogramRule{
+				Metric: metric,
+				Name:   "time",
 				Labels: map[string]string{
 					"host":   "www.example.com",
 					"scheme": "https",
 				},
 			},
 			HistogramRule{
+				Metric: metric,
+				Name:   "time",
 				Labels: map[string]string{
 					"host":   "www.example.com",
 					"status": "200",
 					"foo":    "bar",
 				},
 			},
+			HistogramRule{
+				Metric: metric,
+				Name:   "time_scheme_prefix",
+				Labels: map[string]string{
+					"host":   "www.example2.com",
+					"scheme": "https",
+					"prefix": ".*",
+				},
+			},
 		}
+
 		tests = []struct {
 			labels *labelset
-			expLen int
-			expOk  bool
+			length int
+			ok     bool
+			name   string
 		}{
-			{labels0, 0, false},
-			{labels1, 1, true},
-			{labels2, 2, true},
+			{labels_no_matches, 0, false, "time"},
+			{labels_one_match, 1, true, "time"},
+			{labels_two_matches, 2, true, "time"},
+			{labels_metric_rename, 1, true, "time_scheme_prefix"},
 		}
 	)
 
 	for _, tt := range tests {
-		matches, ok := matchHistogramRules(tt.labels, histRules)
-		assert.Equal(t, tt.expLen, len(matches))
-		assert.Equal(t, tt.expOk, ok)
+		histos, ok := parseHistograms(metric, tt.labels, histRules)
+		assert.Equal(t, tt.length, len(histos))
+		assert.Equal(t, tt.ok, ok)
+
+		if ok && len(histos) == 1 {
+			assert.Equal(t, tt.name, histos[0].Name)
+		}
 	}
 }

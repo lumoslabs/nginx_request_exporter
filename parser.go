@@ -35,6 +35,11 @@ type labelset struct {
 	Values []string
 }
 
+type histogram struct {
+	Name   string
+	Labels *labelset
+}
+
 func (l *labelset) Equals(labels []string) bool {
 	if len(l.Names) != len(labels) {
 		return false
@@ -159,42 +164,40 @@ func parseRule(src, defaultValue string, rules *RuleList) string {
 	return defaultValue
 }
 
-func matchHistogramRules(labels *labelset, rules *HistogramRuleList) (matches []*labelset, matchOk bool) {
-	matches = make([]*labelset, 0)
+func parseHistograms(metricName string, srcLabels *labelset, rules *HistogramRuleList) (histos []*histogram, ok bool) {
+	histos = make([]*histogram, 0)
 
 	if rules == nil {
 		return
 	}
 
-	for _, r := range *rules {
-		if matchNames, ok := matchHistogramRule(labels, r); ok {
-			histLabels := &labelset{
-				Names:  make([]string, 0),
-				Values: make([]string, 0),
+	for _, rule := range *rules {
+		if metricName == rule.Metric {
+			if h, hOk := newHistogram(srcLabels, &rule); hOk {
+				histos = append(histos, h)
+				ok = true
 			}
-
-			for _, name := range matchNames {
-				if val, ok := labels.Get(name); ok {
-					histLabels.Names = append(histLabels.Names, name)
-					histLabels.Values = append(histLabels.Values, val)
-				}
-			}
-
-			matches = append(matches, histLabels)
-			matchOk = true
 		}
 	}
 
 	return
 }
 
-func matchHistogramRule(labels *labelset, rule HistogramRule) (matchNames []string, matchOk bool) {
-	matchNames = make([]string, 0)
+func newHistogram(srcLabels *labelset, rule *HistogramRule) (h *histogram, ok bool) {
+	h = &histogram{
+		Name: rule.Name,
+		Labels: &labelset{
+			Names:  make([]string, 0),
+			Values: make([]string, 0),
+		},
+	}
 
-	for name, regex := range rule.Labels {
-		if val, ok := labels.Get(name); ok {
+	for _, name := range keys(rule.Labels) {
+		if val, valOk := srcLabels.Get(name); valOk {
+			regex := rule.Labels[name]
 			if match, er := regexp.MatchString(regex, val); match {
-				matchNames = append(matchNames, name)
+				h.Labels.Names = append(h.Labels.Names, name)
+				h.Labels.Values = append(h.Labels.Values, val)
 			} else {
 				if er != nil {
 					log.Error(er)
@@ -206,7 +209,15 @@ func matchHistogramRule(labels *labelset, rule HistogramRule) (matchNames []stri
 		}
 	}
 
-	sort.Strings(matchNames)
-	matchOk = true
+	ok = true
 	return
+}
+
+func keys(src map[string]string) []string {
+	dst := make([]string, 0, len(src))
+	for k, _ := range src {
+		dst = append(dst, k)
+	}
+	sort.Strings(dst)
+	return dst
 }

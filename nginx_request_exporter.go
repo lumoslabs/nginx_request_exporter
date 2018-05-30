@@ -199,14 +199,14 @@ func main() {
 
 			for _, metric := range metrics {
 				// Create histogram metrics if there are any matches according to histogram rules
-				if matches, ok := matchHistogramRules(labels, cfg.HistogramRules); ok {
-					for _, histLabels := range matches {
+				if histos, ok := parseHistograms(metric.Name, labels, cfg.HistogramRules); ok {
+					for _, histo := range histos {
 						collector = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 							Namespace: namespace,
-							Name:      metric.Name,
+							Name:      histo.Name,
 							Help:      fmt.Sprintf("Nginx request log value for %s", metric.Name),
 							Buckets:   cfg.Buckets,
-						}, histLabels.Names)
+						}, histo.Labels.Names)
 						if err := prometheus.Register(collector); err != nil {
 							if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
 								collector = are.ExistingCollector.(*prometheus.HistogramVec)
@@ -215,7 +215,7 @@ func main() {
 								continue
 							}
 						}
-						collector.(*prometheus.HistogramVec).WithLabelValues(histLabels.Values...).Observe(metric.Value)
+						collector.(*prometheus.HistogramVec).WithLabelValues(histo.Labels.Values...).Observe(metric.Value)
 					}
 				}
 			}

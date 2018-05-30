@@ -1,12 +1,16 @@
 # Explicitly define which label sets should be histograms measuring response time
 histogram_rules:
   # Create histogram for all 200 responses for https://www.example.com
-  - labels:
+  - metric: time
+    name: time
+    labels:
       host: ^www\.example\.com$
       scheme: https
       status: 200
   # Create histogram for each prefix for https://www.example.com
-  - labels:
+  - metric: time
+    name: time
+    labels:
       host: ^www\.example\.com$
       scheme: https
       prefix: .*

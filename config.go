@@ -33,6 +33,8 @@ type Rule struct {
 type RuleList []Rule
 
 type HistogramRule struct {
+	Metric string            `json:"metric"`
+	Name   string            `json:"name"`
 	Labels map[string]string `json:"labels"`
 }
 
